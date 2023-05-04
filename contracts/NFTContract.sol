@@ -110,4 +110,33 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
 
         return nfts[tokenId].description;
     }
+
+    function printNFTsOwner(uint256 tokenId) view public returns (address){
+
+        return nftCreators[tokenId];
+    }
+
+    function printNFTsPrice(uint256 tokenId) view public returns (uint256){
+
+        return nfts[tokenId].price;
+    }
+
+    function printNFTsforSale(uint256 tokenId) view public returns (bool){
+
+        return nfts[tokenId].forSale;
+    }
+
+    function printUserBalance(address user) view public returns (uint256){
+
+        return user.balance;
+    }
+
+    function prinAllNFTsAvailableforSale() view public returns (string[] memory){
+        string[] memory result;
+        for(uint i = 1; i <= _tokenIds; i++){
+            result[i-1] = nfts[i].name;
+        }
+        return result;  
+    }
+
 }
