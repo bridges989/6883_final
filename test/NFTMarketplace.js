@@ -156,11 +156,12 @@ contract('NFTMarketplace', (accounts) => {
     
         // Set approval for the buyer to purchase the NFT
         await NFTInstance.setApprovalForAll(buyer, true, { from: seller });
-    
+        const buyerBalanceBeforePurchase = await web3.eth.getBalance(buyer);
+        
         try {
           // Attempt to purchase the NFT with incorrect Ether amount
           await NFTInstance.purchaseNFT(tokenId, { from: buyer, value: salePrice - 1 });
-    
+
           // If the transaction goes through, the test fails
           assert.fail("The purchase should have failed due to incorrect Ether amount");
         } catch (error) {
@@ -170,6 +171,10 @@ contract('NFTMarketplace', (accounts) => {
           // Check if the NFT is still owned by the seller
           const currentOwner = await NFTInstance.nftCreators(tokenId);
           assert.equal(currentOwner, seller, "The NFT should still be owned by the seller");
+        
+          // Check if the buyer been charged after false purchase
+          const buyerBalanceAfterPurchase = await web3.eth.getBalance(buyer);
+          assert.equal(buyerBalanceBeforePurchase, buyerBalanceAfterPurchase, "The buyer has been flase charged");
         }
       })
 })
