@@ -82,30 +82,94 @@ contract('NFTMarketplace', (accounts) => {
     it('should purchase the right NFTs from sale list', async () => {
         const NFTInstance = await NFTMarketplace.deployed();
 
-        await NFTInstance.createNFT("plane", "it is plane", "https://ipfs.io/ipfs/bafybeiadjwxddlh4poqqa5i64hxypss4rbn6bxwxddbi5eh7tbyx3plo54/{id}.json");
-
-        await NFTInstance.listNFTForSale(5, 100);
-
+        // Define seller and buyer accounts
         const seller = accounts[0];
         const buyer = accounts[1];
-        console.log(seller.toString());
-        console.log(buyer.toString());
-
-        const buyBalanceBefore = await NFTInstance.printUserBalance.call(buyer);
-        console.log(buyBalanceBefore.toString());
-
-        await NFTInstance.purchaseNFT(5);
-
-        const nftOwner = await NFTInstance.printNFTsOwner.call(5);
-
-        console.log(nftOwner.toString());
-        assert(buyer == nftOwner, "buyer is failed to buy the NFT");
-
-        const buyBalanceAfter = await NFTInstance.printUserBalance.call(buyer);
-        console.log(buyBalanceBefore.toString());
-
-        const price = await NFTInstance.printNFTsPrice.call(5);
-
-        assert((buyBalanceBefore - buyBalanceAfter) == price, "buyer paid wrong price");
+    
+        // Token URI for the NFT
+        const tokenURI = "https://ipfs.io/ipfs/bafybeiadjwxddlh4poqqa5i64hxypss4rbn6bxwxddbi5eh7tbyx3plo54/{id}.json";
+    
+        // Create an NFT with the seller account
+        await NFTInstance.createNFT("plane", "it is a plane", tokenURI, { from: seller });
+    
+        // Define the tokenId and sale price
+        const tokenId = 5;
+        const salePrice = 100;
+    
+        // List the NFT for sale with the specified price
+        await NFTInstance.listNFTForSale(tokenId, salePrice, { from: seller });
+    
+        // Set approval for the buyer to purchase the NFT
+        await NFTInstance.setApprovalForAll(buyer, true, { from: seller });
+    
+        // Get the buyer's balance before the purchase
+        const buyerBalanceBeforePurchase = await web3.eth.getBalance(buyer);
+    
+        // Purchase the NFT using the buyer account and specified sale price
+        const txReceipt = await NFTInstance.purchaseNFT(tokenId, { from: buyer, value: salePrice });
+    
+        // Check if the NFT is now owned by the buyer
+        const newOwner = await NFTInstance.nftCreators(tokenId);
+        assert.equal(newOwner, buyer, "The NFT is not owned by the second user account");
+    
+        // Calculate the gas fee for the purchase transaction
+        const txDetails = await web3.eth.getTransaction(txReceipt.tx);
+        const gasUsed = txReceipt.receipt.gasUsed;
+        const gasFee = web3.utils.toBN(gasUsed).mul(web3.utils.toBN(txDetails.gasPrice));
+    
+        // Get the buyer's balance after the purchase
+        const buyerBalanceAfterPurchase = await web3.eth.getBalance(buyer);
+    
+        // Calculate the expected buyer's balance after the purchase
+        const expectedBuyerBalance = web3.utils
+          .toBN(buyerBalanceBeforePurchase)
+          .sub(web3.utils.toBN(salePrice))
+          .sub(gasFee);
+    
+        // Check if the correct amount of Ether was transferred to the seller
+        assert.equal(
+          buyerBalanceAfterPurchase,
+          expectedBuyerBalance.toString(),
+          "The correct amount of Ether was not transferred to the first user account"
+          );
     })
+
+    it("should execute an unsuccessful NFT purchase due to incorrect Ether amount", async () => {
+        const NFTInstance = await NFTMarketplace.deployed();
+    
+        // Define seller and buyer accounts
+        const seller = accounts[0];
+        const buyer = accounts[1];
+    
+        // Token URI for the NFT
+        const tokenURI = "https://ipfs.io/ipfs/bafybeiadjwxddlh4poqqa5i64hxypss4rbn6bxwxddbi5eh7tbyx3plo54/{id}.json";
+    
+        // Create an NFT with the seller account
+        await NFTInstance.createNFT("plane", "it is a plane", tokenURI, { from: seller });
+    
+        // Define the tokenId and sale price
+        const tokenId = 1;
+        const salePrice = 100;
+    
+        // List the NFT for sale with the specified price
+        await NFTInstance.listNFTForSale(tokenId, salePrice, { from: seller });
+    
+        // Set approval for the buyer to purchase the NFT
+        await NFTInstance.setApprovalForAll(buyer, true, { from: seller });
+    
+        try {
+          // Attempt to purchase the NFT with incorrect Ether amount
+          await NFTInstance.purchaseNFT(tokenId, { from: buyer, value: salePrice - 1 });
+    
+          // If the transaction goes through, the test fails
+          assert.fail("The purchase should have failed due to incorrect Ether amount");
+        } catch (error) {
+          // Check if the error message contains the expected revert reason
+          assert(error.message.includes("Insufficient funds to purchase this NFT"), "Unexpected error occurred");
+    
+          // Check if the NFT is still owned by the seller
+          const currentOwner = await NFTInstance.nftCreators(tokenId);
+          assert.equal(currentOwner, seller, "The NFT should still be owned by the seller");
+        }
+      })
 })

@@ -70,18 +70,28 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
     }
 
     function purchaseNFT(uint256 tokenId) public payable nonReentrant {
-        require(nfts[tokenId].forSale, "This NFT is not for sale");
-        require(msg.value >= nfts[tokenId].price, "Insufficient funds to purchase this NFT");
+        require(nfts[tokenId].forSale, "This NFT is not for sale.");
+        require(msg.value >= nfts[tokenId].price, "Insufficient funds to purchase this NFT.");
+        require(balanceOf(nftCreators[tokenId], tokenId) > 0, "NFT has already been sold.");
 
         address seller = nftCreators[tokenId];
         require(seller != msg.sender, "You already own this NFT.");
 
+        // Ensure the contract is approved to handle tokens on behalf of the seller.
+        if (!isApprovedForAll(seller, address(this))) {
+            setApprovalForAll(seller, true);
+        }
+
+        // Transfer the NFT token from the seller to the buyer.
         safeTransferFrom(seller, msg.sender, tokenId, 1, "");
 
+        // Update the token ownership and set the token as no longer for sale.
+        nftCreators[tokenId] = msg.sender;
         nfts[tokenId].forSale = false;
 
-        address payable buyer = payable(seller);
-        buyer.sendValue(msg.value);
+        // Transfer the funds from the buyer to the seller.
+        address payable sellerPayable = payable(seller);
+        sellerPayable.sendValue(msg.value);
 
         emit NFTPurchased(tokenId, msg.sender, nfts[tokenId].price);
     }
