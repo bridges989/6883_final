@@ -7,21 +7,26 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+// The contract is built on top of ERC1155 standard
 contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
     using Address for address payable;
 
     uint256 private _tokenIds;
-
+    
+    // create basic structure of NFT
     struct NFT {
         string name;
         string description;
         uint256 price;
         bool forSale;
     }
-
+    
+    // define a public mapping nfts that associates tokenID with the corresponding NFT
     mapping(uint256 => NFT) public nfts;
+    // define a public mapping nftCreators that associates tokenID with the address of its creator
     mapping(uint256 => address) public nftCreators;
-
+    
+    // declare events that can be emitted by the contract when specific actions occur
     event NFTCreated(uint256 tokenId, string name, string description, uint256 price);
     event NFTListed(uint256 tokenId, uint256 price);
     event NFTUnlisted(uint256 tokenId);
@@ -32,15 +37,21 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
         // _mint(msg.sender, 1, 1, "");
         // _mint(msg.sender, 2, 1, "");
     }
-
+    
     function createNFT(string memory name, string memory description, string memory tokenURI) public {
+        // generate a unique ID for the new NFT
         _tokenIds += 1;
         uint256 tokenId = _tokenIds;
-
+        
+        // mint a new token and assign it to the address of the sender
         _mint(msg.sender, tokenId, 1, "");
+        
+        // associate tokenURI with the new token
         _setURI(tokenId, tokenURI);
-
+        
+        // store the new NFT structure in nfts mapping using tokenId as the key
         nfts[tokenId] = NFT(name, description, 0, false);
+        // store the address of the creator of the NFT in nftCreators mapping, using tokenId as the key
         nftCreators[tokenId] = msg.sender;
 
         emit NFTCreated(tokenId, name, description, 0);
@@ -48,6 +59,8 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
 
     function transferNFT(address to, uint256 tokenId) public {
         require(msg.sender == nftCreators[tokenId], "Only the creator can transfer the NFT.");
+        
+        // use safeTransferFrom function to transfer the NFT from sender's address to receiver's address
         safeTransferFrom(msg.sender, to, tokenId, 1, "");
         nftCreators[tokenId] = to;
     }
@@ -97,6 +110,7 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
     }
 
     function _setURI(uint256 tokenId, string memory tokenURI) internal {
+        // mint a new token associated with tokenURI using abi-encoded data
         _mint(msg.sender, tokenId, 1, abi.encodePacked(tokenURI));
     }
 
