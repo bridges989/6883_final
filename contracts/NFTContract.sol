@@ -76,7 +76,8 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
 
     function removeNFTFromSale(uint256 tokenId) public {
         require(nftCreators[tokenId] == msg.sender, "Only the creator can remove the NFT from sale.");
-
+        require(nfts[tokenId].forSale, "The NFT is not currently listed for sale.")
+        
         nfts[tokenId].forSale = false;
 
         emit NFTUnlisted(tokenId);
