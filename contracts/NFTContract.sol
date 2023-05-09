@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
     using Address for address payable;
 
-    uint256 private _tokenIds;
+    uint256 private _tokenIds = 0;
     
     // create basic structure of NFT
     struct NFT {
@@ -67,7 +67,9 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
 
     function listNFTForSale(uint256 tokenId, uint256 price) public {
         require(nftCreators[tokenId] == msg.sender, "Only the creator can list the NFT for sale.");
-
+        require(!nfts[tokenId].forSale, "The NFT is already listed for sale.")
+        
+        // update price and forSale for the NFT
         nfts[tokenId].price = price;
         nfts[tokenId].forSale = true;
 
@@ -78,6 +80,7 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
         require(nftCreators[tokenId] == msg.sender, "Only the creator can remove the NFT from sale.");
         require(nfts[tokenId].forSale, "The NFT is not currently listed for sale.")
         
+        // update forSale for the NFT
         nfts[tokenId].forSale = false;
 
         emit NFTUnlisted(tokenId);
@@ -87,7 +90,8 @@ contract NFTMarketplace is ERC1155, Ownable, ReentrancyGuard {
         require(nfts[tokenId].forSale, "This NFT is not for sale.");
         require(msg.value >= nfts[tokenId].price, "Insufficient funds to purchase this NFT.");
         require(balanceOf(nftCreators[tokenId], tokenId) > 0, "NFT has already been sold.");
-
+        
+        // declare a local variable seller to store the address of the current NFT owner
         address seller = nftCreators[tokenId];
         require(seller != msg.sender, "You already own this NFT.");
 
